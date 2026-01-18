@@ -3,10 +3,9 @@
 #include <LiquidCrystal_I2C.h>
 #include <math.h>
 
-// ===================== PASTE TEAMMATE'S DEFINES HERE =====================
 #define FLAME_PIN   2
 #define MQ2_PIN     A0
-#define NTC_AO_PIN  A1
+#define NTC_A0_PIN  A1
 #define BUZZER_PIN  8
 #define LED_R       9
 #define LED_G       10
@@ -24,15 +23,18 @@
 const bool NTC_TO_VCC = true;
 const bool FLAME_ACTIVE_LOW = true;
 
-// ===================== GLOBAL OBJECTS (Only visible in this file) =====================
+// LCD 
 LiquidCrystal_I2C lcd(0x27, 16, 2); 
 
 // ===================== NEW INIT FUNCTION =====================
 // Call this once in your main setup()!
 void initSensors() {
+  Wire.begin();
+  analogReadResolution(ADC_BITS);
+
   pinMode(FLAME_PIN, INPUT);
-  // Note: Analog pins (A0, A1) do not strictly need pinMode(INPUT), but it's fine to keep.
-  
+  pinMode(MQ2_PIN, INPUT);
+  pinMode(NTC_A0_PIN, INPUT);
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(LED_R, OUTPUT);
   pinMode(LED_G, OUTPUT);
@@ -47,8 +49,7 @@ void initSensors() {
   lcd.clear();
 }
 
-// ===================== PASTE TEAMMATE'S FUNCTIONS BELOW =====================
-
+//sensor logic
 void setRGB(bool r, bool g, bool b) {
   digitalWrite(LED_R, r ? HIGH : LOW);
   digitalWrite(LED_G, g ? HIGH : LOW);
@@ -64,9 +65,7 @@ bool flameDetected() {
 }
 
 float readTemperatureC() {
-  // UNO R4 specific resolution settings if needed, otherwise default is fine
-  // analogReadResolution(14); // You might need to add this if using R4 specifically
-  int adc = analogRead(NTC_AO_PIN);
+  int adc = analogRead(NTC_A0_PIN);
   float v = adc * (VCC / ADC_MAX);
   v = constrain(v, 0.001, VCC - 0.001);
 
