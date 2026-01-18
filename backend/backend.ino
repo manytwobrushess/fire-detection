@@ -1,21 +1,25 @@
 #include <WiFiS3.h>
 #include <WiFiSSLClient.h>
 #include <Arduino.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <time.h>
 #include "network_config.h"
 #include "firebase.h"
 #include "sensors.h"
+#include "timee.h"
 
 // Global Objects
 WiFiSSLClient client; 
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 28800);
 int counter = 0;
 
 void setup() {
   Serial.begin(115200);
   
-  // FIX 1: Added 's' to match your sensor file
   initSensors(); 
   
-  // Setup Status LED & Button
   pinMode(statusLed, OUTPUT);
   pinMode(forceStop, INPUT_PULLUP);
   delay(2000);
@@ -24,6 +28,7 @@ void setup() {
   Serial.print("Connecting to WiFi: ");
   Serial.println(ssid);
   WiFi.begin(ssid, pass);
+
   int retries = 0;
 
   while (WiFi.status() != WL_CONNECTED ) {
@@ -54,14 +59,17 @@ void setup() {
     Serial.println(WiFi.localIP());
     digitalWrite(statusLed, HIGH); 
   }
+    timeClient.begin();
 }
 
 void loop() { 
+  timeClient.update();
+  String timeString = getFullFormattedTime(timeClient.getEpochTime());
+
   float temp = readTemperatureC();
   bool flame = flameDetected();
   int gas = readGas();
 
-  // FIX 2: Correct String syntax (Only one value allowed)
   String condition = "SAFE"; 
 
   // --- PRIORITY LOGIC ---
@@ -113,7 +121,7 @@ void loop() {
     Serial.println(counter);
     
 
-    sendToFirebase(counter, condition, temp, gas, flame);
+    sendToFirebase(counter, condition, temp, gas, flame, timeString);
     
     delay(3000); 
   }
