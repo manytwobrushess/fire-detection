@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino Fire Monitor</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="config.js"></script>
+    <style>
+        body { background-color: #f4f6f9; padding: 20px; }
+        .card { margin-bottom: 20px; shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .danger-text { color: red; font-weight: bold; }
+        /*th is for table*/
+        th{position: sticky; 
+            top:0 ;
+            background-color:bisque ;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 class="text-center mb-4">🔥 IoT Fire Safety Dashboard</h2>
+
+    <div class="card p-3">
+        <h5>Temperature & Gas History</h5>
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <div class="card p-3">
+        <h5>Data Log (History)</h5>
+        <div style="height: 300px; overflow-y: scroll;">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Temp (°C)</th>
+                        <th>Gas Level</th>
+                        <th>Flame</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // SETUP CHART
+
+const ctx = document.getElementById('myChart').getContext('2d');
+const myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [], 
+        datasets: [{
+            label: 'Temperature (°C)',
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            data: [], 
+            yAxisID: 'y',
+            tension: 0.3,
+            fill: true
+        }, {
+            label: 'Gas Level',
+            borderColor: 'rgb(54, 162, 235)',
+            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+            data: [], 
+            yAxisID: 'y1',
+            tension: 0.3,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+            y: { 
+                type: 'linear', 
+                display: true, 
+                position: 'left', 
+                title: {display: true, text: 'Temp (°C)'} 
+            },
+            y1: { 
+                type: 'linear', 
+                display: true, 
+                position: 'right', 
+                grid: { drawOnChartArea: false }, 
+                title: {display: true, text: 'Gas (PPM)'} 
+            },
+            x: {
+                min: 0,
+                max: 20
+            }
+        }, 
+
+        plugins: {
+            zoom: {
+                pan: {
+                    enabled: true,
+                    mode: 'x',
+                },
+                zoom: {
+                    wheel: { enabled: true },
+                    pinch: { enabled: true },
+                    mode: 'x',
+                }
+            }
+        }
+    } 
+});
+
+    //DATA LISTENER
+const dbRef = firebase.database().ref('test/counter'); 
+
+    console.log("Starting Firebase Listener...");
+
+    dbRef.on('value', (snapshot) => {
+        let targetData = snapshot.val();
+        
+        if (!targetData) {
+            console.log("No data found at 'test/counter'.");
+            return;
+        }
+
+        // Handle nested folders if necessary
+        if (targetData.counter) {
+            targetData = targetData.counter;
+        }
+
+        const keys = Object.keys(targetData).sort(); 
+        
+        const tableBody = document.getElementById('table-body');
+        tableBody.innerHTML = ""; 
+
+        const tableKeys = keys.slice(-500); 
+
+        [...tableKeys].reverse().forEach(key => {
+            const reading = targetData[key];
+            if (!reading) return;
+
+            let valTemp = parseFloat(reading.temperature || reading.Temperature || reading.temp || 0);
+            let valGas = parseFloat(reading.gas || reading.Gas || reading.LPG || 0);
+            let valFlame = (reading.flame == 1) ? "Fire" : "No Flame";
+            let valStatus = reading.status || "OK";
+
+            // Format Date for Table
+            const timeParts = key.split('_');
+            const dateStr = timeParts[0];
+            const timeStr = timeParts[1] ? timeParts[1].replace(/-/g, ':') : "";
+
+            const row = `<tr>
+                <td>${dateStr} <small>${timeStr}</small></td>
+                <td>${valTemp.toFixed(2)}</td>
+                <td>${valGas.toFixed(0)}</td>
+                <td>${valFlame}</td>
+                <td class="${valStatus === 'DANGER' ? 'danger-text' : ''}">${valStatus}</td>
+            </tr>`;
+            tableBody.innerHTML += row;
+        });
+
+        //PREPARE DATA FOR CHART 
+        const chartKeys = keys.slice(-500); 
+        
+        const timestamps = [];
+        const temps = [];
+        const gases = [];
+
+        chartKeys.forEach(key => {
+            const reading = targetData[key];
+            
+            let valTemp = parseFloat(reading.temperature || reading.Temperature || reading.temp || 0);
+            let valGas = parseFloat(reading.gas || reading.Gas || reading.LPG || 0);
+
+
+            const timeParts = key.split('_');
+            const datePart = timeParts[0].substring(5); //substring is to remove 2026-
+            const timePart = timeParts[1] ? timeParts[1].replace(/-/g, ':') : key;
+            
+            // Combine them: "01-20 18:05:00"
+            const fullLabel = `${datePart} ${timePart}`;
+
+            timestamps.push(fullLabel);
+            temps.push(valTemp);
+            gases.push(valGas);
+        });
+
+        console.log("Sending " + temps.length + " points to chart.");
+
+        myChart.data.labels = timestamps;
+        myChart.data.datasets[0].data = temps;
+        myChart.data.datasets[1].data = gases;
+
+        //VIEW WINDOW (ZOOM/PAN LOGIC) 
+    
+        const totalPoints = timestamps.length;
+        if (totalPoints > 20) {
+            myChart.options.scales.x.min = totalPoints - 20; 
+            myChart.options.scales.x.max = totalPoints - 1;       
+        } else {
+            myChart.options.scales.x.min = 0;
+            myChart.options.scales.x.max = totalPoints - 1;
+        }
+
+        myChart.update();
+    });
+</script>
+</body>
+</html>
