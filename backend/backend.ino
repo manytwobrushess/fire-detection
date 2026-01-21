@@ -15,6 +15,11 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 28800);
 int counter = 0;
 
+// Variables for Timer Logic
+unsigned long lastBlink = 0;
+bool blinkState = false;
+unsigned long lastFirebaseSend = 0;
+
 void setup() {
   Serial.begin(115200);
   
@@ -30,7 +35,6 @@ void setup() {
   WiFi.begin(ssid, pass);
 
   int retries = 0;
-
   while (WiFi.status() != WL_CONNECTED ) {
     digitalWrite(statusLed, HIGH);
     delay(200);
@@ -45,21 +49,13 @@ void setup() {
     }
   }
   
-  // Wait for IP
-  while (WiFi.localIP() == IPAddress(0, 0, 0, 0) && WiFi.status() == WL_CONNECTED) {
-    digitalWrite(statusLed, HIGH);
-    delay(100);
-    digitalWrite(statusLed, LOW);
-    delay(100);
-  }
-
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\nWiFi connected!");
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
     digitalWrite(statusLed, HIGH); 
   }
-    timeClient.begin();
+  timeClient.begin();
 }
 
 void loop() { 
@@ -72,20 +68,24 @@ void loop() {
 
   String condition = "SAFE"; 
 
-  // --- PRIORITY LOGIC ---
+  // --- PRIORITY LOGIC (Sensors) ---
   if (flame) {
-    condition = "DANGER";
-    setRGB(true, false, false); 
-    buzzer_on(2200);
-    lcdTemp("DANGER", temp);
-    delay(500); 
+      condition = "DANGER";
+      unsigned long now = millis();
+      if (now - lastBlink >= 100) {
+        lastBlink = now;
+        blinkState = !blinkState;
+      }
+      setRGB(blinkState, false, false); 
+      buzzer_on(2200);
+      lcdTemp("DANGER", temp);
   }
   else if (gas > MQ2_THRESHOLD) {
     condition = "ALERT";
     setRGB(false, false, true);
     buzzer_on(1500);
     lcdGas("ALERT", gas);
-    delay(500);
+    delay(500); 
   }
   else if (temp > TEMP_THRESHOLD_C) {
     condition = "WARNING";
@@ -100,32 +100,35 @@ void loop() {
     lcdTemp("SAFE", temp);
   }
 
-
-  // --- SENDING LOGIC ---
+  // --- SENDING LOGIC (Timer-based, Non-blocking) ---
   int buttonState = digitalRead(forceStop);
-  if(buttonState == HIGH){
-    counter++;
+  
+  if(buttonState == HIGH) { // Button NOT pressed (Normal Mode)
+    unsigned long currentMillis = millis();
 
-    Serial.println("\n-----------------------------");
-    Serial.print("Status: "); 
-    Serial.print(condition);
-    Serial.print(" | Temp: "); 
-    Serial.print(temp, 1); 
-    Serial.print("C");
-    Serial.print(" | Gas: "); 
-    Serial.print(gas);
-    Serial.print(" | Flame: "); 
-    Serial.println(flame ? "YES" : "NO");  
+    // Check if 3 seconds have passed
+    if (currentMillis - lastFirebaseSend >= 3000) {
+      lastFirebaseSend = currentMillis; // Reset timer
+      counter++;
 
-    Serial.print("Sending NEW data: ");
-    Serial.println(counter);
-    
+      Serial.println("\n-----------------------------");
+      Serial.print("Status: "); 
+      Serial.print(condition);
+      Serial.print(" | Temp: "); 
+      Serial.print(temp, 1); 
+      Serial.print("C");
+      Serial.print(" | Gas: "); 
+      Serial.print(gas);
+      Serial.print(" | Flame: "); 
+      Serial.println(flame ? "YES" : "NO");  
 
-    sendToFirebase(counter, condition, temp, gas, flame, timeString);
-    
-    delay(3000); 
+      Serial.print("Sending NEW data: ");
+      Serial.println(counter);
+      
+      sendToFirebase(counter, condition, temp, gas, flame, timeString);
+    }
   }
-  else{
+  else { // Button PRESSED (Pause Mode)
     Serial.println("Pause button press. release to continue");
     digitalWrite(statusLed, LOW);
     delay(500);

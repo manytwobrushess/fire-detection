@@ -5,7 +5,7 @@
 
 // --- SHARED CONSTANTS (Main needs these) ---
 const int MQ2_THRESHOLD = 4200;
-const float TEMP_THRESHOLD_C = 45.0;
+const float TEMP_THRESHOLD_C = 30.0;
 
 // --- FUNCTION DECLARATIONS ---
 void initSensors();

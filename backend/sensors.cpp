@@ -20,6 +20,7 @@
 #define T0       298.15
 #define R_FIXED  10000.0
 #define TEMP_OFFSET 0.0
+
 const bool NTC_TO_VCC = true;
 const bool FLAME_ACTIVE_LOW = true;
 
@@ -31,7 +32,6 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 void initSensors() {
   Wire.begin();
   analogReadResolution(ADC_BITS);
-
   pinMode(FLAME_PIN, INPUT);
   pinMode(MQ2_PIN, INPUT);
   pinMode(NTC_A0_PIN, INPUT);
