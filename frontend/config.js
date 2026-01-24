@@ -1,9 +1,9 @@
 // config.js
 const firebaseConfig = {
   apiKey: "AIzaSyAknpKiL4-ShxkL0KrLXapd7rU9rLe0HCo",
-  authDomain: "ffiredetection-1673c.firebaseapp.com",
+  //authDomain: "replace it",
   databaseURL: "https://ffiredetection-1673c-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "ffiredetection-1673c",
+  //projectId: "replaced it",
 };
 
 // Initialize Firebase right here
