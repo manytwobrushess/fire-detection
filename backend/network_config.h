@@ -1,8 +1,8 @@
 #ifndef NETWORK_CONFIG_H
 #define NETWORK_CONFIG_H
 // Replace these with your network info
-const char ssid[] = "iPhone";
-const char pass[] = "yxistiancai";
+const char ssid[] = "replaced your wifi name";
+const char pass[] = "replaced your wifi password";
 
 // Replace with your Firebase project info
 #define API_KEY "kyuGcuZ3iki4t7J7AlnxLER3Nu5lfHsbt7oSS6UW"
