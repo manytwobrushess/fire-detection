@@ -3,19 +3,6 @@
 
 An integrated IoT solution that monitors environmental safety (Fire, Gas, Temperature) using an Arduino UNO R4 WiFi. It features a real-time web dashboard and instant alerts via a Telegram Bot.
 
-## ⚠️ Important Security Notice
-> **Credentials Expiry Warning:**
-> The Firebase API keys, secrets, and database URL included in the code are for **demonstration purposes only**.
-> * These credentials will be **regenerated and invalidated on March 22, 2026**.
-> * **Do not use the provided keys in a production environment.**
-
-## ⚠️ Current System Status (Read-Only Mode)
-> **Note:** The live Firebase database linked in this repository is currently in **Read-Only Mode**.
-> * **Frontend (Dashboard):** The dashboard will successfully **read and display** historical data.
-> * **Backend (Arduino):** The Arduino will **fail to write** new sensor data to the cloud.
->
-> **Reason:** Write permissions are restricted for security. To enable full functionality, please configure your own Firebase project keys.
-
 ## 🚀 Features
 * **Real-time Monitoring:** Tracks Temperature and Gas levels continuously.
 * **Instant Alerts:** Triggers visual/audio alarms and Telegram notifications immediately upon flame detection.
